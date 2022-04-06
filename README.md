@@ -6,6 +6,8 @@
 
 2. [Install Yarn](https://yarnpkg.com/en/docs/install)
 
+3. Rename `.env.local.sample` to `.env.local`, and change the credentials in `.env.local` to your own.
+
 ## Local Development
 
 ### With Docker Compose

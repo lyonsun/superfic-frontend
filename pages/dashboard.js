@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 
 import Layout from "../components/layout"
 
+import { getUser } from './api/users'
+import { getStats } from './api/stats'
+
 const Dashboard = () => {
     const [overlay, setOverlay] = useState('visible')
     const [logout, setLogout] = useState('hidden')
@@ -25,33 +28,29 @@ const Dashboard = () => {
         'December',
     ]
 
-    const API_HOST = 'http://localhost:8080';
-
     useEffect(() => {
-        const userID = localStorage.getItem('userID')
+        // TODO: check if user is logged in
 
-        if (userID) {
+        // get statistics data
+        const statsData = localStorage.getItem('stats')
+
+        if (statsData) {
             setOverlay('hidden')
             setLogout('visible')
 
-            fetch(`${API_HOST}/index.php/get_user?user_id=${userID}`)
-                .then((res) => res.json())
-                .then((data) => {
-                    if (!data) {
-                        alert('User ID not found')
-                        return
-                    }
+            const stats = JSON.parse(statsData)
 
-                    getStats(data.id)
-                })
-                .catch((err) => {
-                    alert(err.message)
-                })
+            setPostsCount(stats.postsCount)
+            setMonthlyPostsCount(stats.monthlyPostsCount)
+            setAverageChars(stats.averageChars)
+            setLongestPost(stats.longestPost)
+        } else {
+            // TODO: handle no data exception
         }
     }, [])
 
     const handleLogout = () => {
-        localStorage.removeItem('userID')
+        localStorage.removeItem('stats')
         setPostsCount(0)
         setMonthlyPostsCount([])
         setAverageChars(0)
@@ -60,7 +59,7 @@ const Dashboard = () => {
         setLogout('hidden')
     }
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault()
 
         const inputUserID = e.target.userID.value
@@ -70,48 +69,30 @@ const Dashboard = () => {
             return
         }
 
-        fetch(`${API_HOST}/index.php/get_user?user_id=${inputUserID}`)
-            .then((res) => res.json())
-            .then((data) => {
-                if (!data) {
-                    alert('User ID not found')
-                    return
-                }
+        const userData = await getUser(inputUserID)
 
-                localStorage.setItem('userID', inputUserID)
-                setOverlay('hidden')
-                setLogout('visible')
-                getStats(data.id)
-            })
-            .catch((err) => {
-                alert(err.message)
-            })
-    }
+        if (userData.status === false) {
+            alert(userData.message)
+            return
+        }
 
-    const getStats = async (userID) => {
-        await fetch(`${API_HOST}/index.php/get_posts_count?user_id=${userID}`)
-            .then((res) => res.json())
-            .then((data) => {
-                setPostsCount(data.count)
-            })
+        const user = userData.user
 
-        await fetch(`${API_HOST}/index.php/get_average_characters_count?user_id=${userID}`)
-            .then((res) => res.json())
-            .then((data) => {
-                setAverageChars(data.count)
-            })
+        if (!user) {
+            alert('User ID not found')
+            return
+        }
 
-        await fetch(`${API_HOST}/index.php/get_monthly_posts_count?user_id=${userID}`)
-            .then((res) => res.json())
-            .then((data) => {
-                setMonthlyPostsCount(data)
-            })
+        const stats = await getStats(user.id)
 
-        await fetch(`${API_HOST}/index.php/get_longest_post?user_id=${userID}`)
-            .then((res) => res.json())
-            .then((data) => {
-                setLongestPost(data)
-            })
+        localStorage.setItem('stats', JSON.stringify(stats))
+        setOverlay('hidden')
+        setLogout('visible')
+
+        setPostsCount(stats.postsCount)
+        setMonthlyPostsCount(stats.monthlyPostsCount)
+        setAverageChars(stats.averageChars)
+        setLongestPost(stats.longestPost)
     }
 
     return (
@@ -167,7 +148,7 @@ const Dashboard = () => {
                         </div>
                         <form onSubmit={handleLogin} className="p-8">
                             <label htmlFor="user-id" className="font-bold">User ID</label>
-                            <input type="text" name="userID" id="user-id" className="w-full border rounded p-2 mb-8" />
+                            <input type="text" name="userID" id="user-id" className="w-full border rounded p-2 mb-8" placeholder="HINT: user_1" />
                             <button className="w-full bg-indigo-600 text-white font-bold p-2 rounded flex items-center justify-center gap-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
